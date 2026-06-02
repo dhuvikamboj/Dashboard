@@ -31,7 +31,15 @@ const app = new Elysia()
   .use(layoutRoutes)
 
 if (process.env['NODE_ENV'] === 'production') {
-  app.use(staticPlugin({ assets: 'dist', prefix: '/' }))
+  app.use(staticPlugin({ assets:  './dist', prefix: '/' }))
+    .get('/*', async () => {
+    const file = Bun.file('./dist/index.html');
+    
+    if (await file.exists()) {
+      return file;
+    }
+    return new Response('Not Found', { status: 404 });
+  })
 }
 
 app.listen(2019)
