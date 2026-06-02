@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Check, LayoutDashboard } from 'lucide-react'
+import { Plus, Check, LayoutDashboard, LogOut } from 'lucide-react'
 import { useDashboard } from '@/store/dashboard'
+import { useAuth } from '@/store/auth'
 import { WidgetPicker } from './WidgetPicker'
 import { ThemePicker } from './ThemePicker'
 
 export function EditBar() {
   const { editMode, toggleEditMode } = useDashboard()
+  const { user, logout } = useAuth()
   const [pickerOpen, setPickerOpen] = useState(false)
 
   if (!editMode) {
@@ -28,7 +30,13 @@ export function EditBar() {
           <Plus className="h-4 w-4 mr-1" /> Add Widget
         </Button>
         <ThemePicker />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {user && (
+            <span className="text-xs text-muted-foreground hidden sm:block">{user.email}</span>
+          )}
+          <Button size="sm" variant="ghost" onClick={logout} title="Sign out">
+            <LogOut className="h-4 w-4" />
+          </Button>
           <Button size="sm" onClick={toggleEditMode}>
             <Check className="h-4 w-4 mr-1" /> Done
           </Button>

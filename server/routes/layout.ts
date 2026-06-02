@@ -1,16 +1,19 @@
 import Elysia, { t } from 'elysia'
-
-const LAYOUT_FILE = './layout.json'
+import { readLayout, writeLayout } from '../lib/pocketbase'
 
 export const layoutRoutes = new Elysia({ prefix: '/api' })
   .get('/layout', async () => {
     try {
-      return JSON.parse(await Bun.file(LAYOUT_FILE).text())
+      return await readLayout()
     } catch {
       return []
     }
   })
   .put('/layout', async ({ body }) => {
-    await Bun.write(LAYOUT_FILE, JSON.stringify(body, null, 2))
-    return { ok: true }
+    try {
+      await writeLayout(body)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String(e) }
+    }
   }, { body: t.Array(t.Any()) })

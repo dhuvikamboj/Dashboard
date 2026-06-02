@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
 import { useDashboard } from '@/store/dashboard'
+import { useAuth } from '@/store/auth'
 import { Grid } from '@/components/Grid'
 import { EditBar } from '@/components/EditBar'
+import { Auth } from '@/components/Auth'
 import { useLayout } from '@/hooks/useLayout'
+import { getPb } from '@/lib/pb'
 
 function backgroundStyle(bg: string, accent: string) {
   if (bg === 'dots') {
@@ -20,7 +23,7 @@ function backgroundStyle(bg: string, accent: string) {
   return {}
 }
 
-export default function App() {
+function Dashboard() {
   const { theme } = useDashboard()
   useLayout()
 
@@ -39,4 +42,18 @@ export default function App() {
       </div>
     </div>
   )
+}
+
+export default function App() {
+  const { user, logout } = useAuth()
+
+  // Verify PB token still valid on mount
+  useEffect(() => {
+    const pb = getPb()
+    if (pb.authStore.isValid) return
+    if (user) logout() // token expired, force re-login
+  }, [user, logout])
+
+  if (!user) return <Auth />
+  return <Dashboard />
 }

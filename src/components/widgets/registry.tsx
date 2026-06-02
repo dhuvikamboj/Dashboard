@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Server, Monitor, ScrollText, Globe, Clock as ClockIcon, Link, StickyNote } from 'lucide-react'
+import { Server, Monitor, ScrollText, Globe, Clock as ClockIcon, Link, StickyNote, Clipboard } from 'lucide-react'
 import { ServiceCard } from './ServiceCard'
 import { SystemStats } from './SystemStats'
 import { LogsViewer } from './LogsViewer'
@@ -7,6 +7,7 @@ import { CaddyEditor } from './CaddyEditor'
 import { Clock } from './Clock'
 import { QuickLink } from './QuickLink'
 import { Notes } from './Notes'
+import { ClipboardBucket } from './ClipboardBucket'
 
 export interface WidgetRegistryEntry {
   component: ComponentType<{ config: Record<string, unknown>; onConfigChange: (c: Record<string, unknown>) => void }>
@@ -65,5 +66,12 @@ export const widgetRegistry: Record<string, WidgetRegistryEntry> = {
     defaultSize: { w: 3, h: 3 },
     label: 'Notes',
     icon: StickyNote,
+  },
+  clipboardBucket: {
+    component: ClipboardBucket as WidgetRegistryEntry['component'],
+    defaultConfig: { maxItems: 20 },
+    defaultSize: { w: 4, h: 5 },
+    label: 'Clipboard Bucket',
+    icon: Clipboard,
   },
 }
