@@ -1,0 +1,17 @@
+{
+  "name": "Launchpad",
+  "short_name": "Launchpad",
+  "description": "Personal homelab dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#7c6af7",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
