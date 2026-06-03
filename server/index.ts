@@ -57,14 +57,17 @@ const app = new Elysia()
 
 if (isProd) {
   app
-    .use(staticPlugin({ assets: 'dist', prefix: '/' }))
-    .get('/*', ({ set, path: reqPath }) => {
-      if (reqPath.startsWith('/assets/')) {
-        set.status = 404
-        return 'Not found'
-      }
-      return Bun.file('./dist/index.html')
-    })
+ .use(
+        staticPlugin({
+            assets: './dist',    // Path to your build output
+            prefix: '/',         // Expose directly at the root URL
+            alwaysStatic: true   // Critical: Prevents conflict with the wildcard route
+        })
+    )
+    
+    // 2. Fallback route to support client-side SPA routing (React Router, Vue Router, etc.)
+    .get('/*', () => Bun.file('./dist/index.html'))
+    
 }
 
 app.listen(2019)
