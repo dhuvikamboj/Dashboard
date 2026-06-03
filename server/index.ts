@@ -5,7 +5,6 @@ import { servicesRoutes } from './routes/services'
 import { logsRoutes } from './routes/logs'
 import { systemRoutes } from './routes/system'
 import { caddyRoutes } from './routes/caddy'
-import { layoutRoutes } from './routes/layout'
 
 const PB_URL = (process.env['POCKETBASE_URL'] ?? 'http://galaxy-f14-5g.lan:8080').replace(/\/$/, '')
 const isProd = process.env['NODE_ENV'] === 'production'
@@ -53,7 +52,6 @@ const app = new Elysia()
   .use(logsRoutes)
   .use(systemRoutes)
   .use(caddyRoutes)
-  .use(layoutRoutes)
 
 if (isProd) {
   app
