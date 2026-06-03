@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import { Server, Monitor, ScrollText, Globe, Clock as ClockIcon, Link, StickyNote, Clipboard } from 'lucide-react'
-import { ServiceCard } from './ServiceCard'
+import { PM2Manager } from './PM2Manager'
 import { SystemStats } from './SystemStats'
 import { LogsViewer } from './LogsViewer'
 import { CaddyEditor } from './CaddyEditor'
@@ -18,11 +18,11 @@ export interface WidgetRegistryEntry {
 }
 
 export const widgetRegistry: Record<string, WidgetRegistryEntry> = {
-  serviceCard: {
-    component: ServiceCard as WidgetRegistryEntry['component'],
-    defaultConfig: { serviceName: '' },
-    defaultSize: { w: 3, h: 3 },
-    label: 'Service Card',
+  pm2Manager: {
+    component: PM2Manager,
+    defaultConfig: {},
+    defaultSize: { w: 5, h: 5 },
+    label: 'PM2 Services',
     icon: Server,
   },
   systemStats: {
