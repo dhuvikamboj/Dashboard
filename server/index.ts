@@ -7,42 +7,67 @@ import { systemRoutes } from './routes/system'
 import { caddyRoutes } from './routes/caddy'
 import { layoutRoutes } from './routes/layout'
 
-const DASHBOARD_TOKEN = process.env['DASHBOARD_TOKEN']
+const PB_URL = (process.env['POCKETBASE_URL'] ?? 'http://galaxy-f14-5g.lan:8080').replace(/\/$/, '')
+const isProd = process.env['NODE_ENV'] === 'production'
+
+// Verify PocketBase token — calls PB auth-refresh, caches result 60s
+const tokenCache = new Map<string, { valid: boolean; exp: number }>()
+
+async function verifyPbToken(token: string): Promise<boolean> {
+  const cached = tokenCache.get(token)
+  if (cached && Date.now() < cached.exp) return cached.valid
+
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/users/auth-refresh`, {
+      method: 'POST',
+      headers: { Authorization: token },
+    })
+    const valid = res.ok
+    tokenCache.set(token, { valid, exp: Date.now() + 60_000 })
+    // Evict cache periodically
+    if (tokenCache.size > 100) tokenCache.clear()
+    return valid
+  } catch {
+    return false
+  }
+}
+
+const apiGuard = new Elysia({ name: 'api-auth' })
+  .onBeforeHandle(async ({ request, set }) => {
+    const auth = request.headers.get('authorization')
+    if (!auth?.startsWith('Bearer ')) {
+      set.status = 401
+      return { error: 'Unauthorized' }
+    }
+    const valid = await verifyPbToken(auth)
+    if (!valid) {
+      set.status = 401
+      return { error: 'Unauthorized' }
+    }
+  })
 
 const app = new Elysia()
   .use(cors({ origin: true }))
-  .use(
-    new Elysia({ name: 'auth' }).derive(({ request, set }) => {
-      if (!DASHBOARD_TOKEN) return {}
-      const url = new URL(request.url)
-      if (!url.pathname.startsWith('/api')) return {}
-      const auth = request.headers.get('authorization')
-      if (auth !== `Bearer ${DASHBOARD_TOKEN}`) {
-        set.status = 401
-        throw new Error('Unauthorized')
-      }
-      return {}
-    })
-  )
+  .use(apiGuard)
   .use(servicesRoutes)
   .use(logsRoutes)
   .use(systemRoutes)
   .use(caddyRoutes)
   .use(layoutRoutes)
 
-if (process.env['NODE_ENV'] === 'production') {
-  app.use(staticPlugin({ assets:  './dist', prefix: '/' }))
-    .get('/*', async () => {
-    const file = Bun.file('./dist/index.html');
-    
-    if (await file.exists()) {
-      return file;
-    }
-    return new Response('Not Found', { status: 404 });
-  })
+if (isProd) {
+  app
+    .use(staticPlugin({ assets: 'dist', prefix: '/' }))
+    .get('/*', ({ set, path: reqPath }) => {
+      if (reqPath.startsWith('/assets/')) {
+        set.status = 404
+        return 'Not found'
+      }
+      return Bun.file('./dist/index.html')
+    })
 }
 
 app.listen(2019)
-console.log('Launchpad running on http://localhost:2019')
+console.log(`Launchpad running on http://localhost:2019 [${isProd ? 'production' : 'development'}]`)
 
 export type App = typeof app
