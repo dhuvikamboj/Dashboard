@@ -1,10 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/api/client'
 
+export interface DiskEntry {
+  device: string
+  mount: string
+  used: string
+  total: string
+  percent: number
+}
+
+export interface ProcessEntry {
+  pid: number
+  name: string
+  cpu: number
+  mem: number
+}
+
 export interface SystemStats {
   cpu: number
   memory: { used: number; total: number }
-  disk: { used: string; total: string; percent: number }
+  disks: DiskEntry[]
+  processes: ProcessEntry[]
   uptime: number
   hostname: string
   ip: string
