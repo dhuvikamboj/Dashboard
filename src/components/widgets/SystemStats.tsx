@@ -111,6 +111,28 @@ export function SystemStats(_: Props) {
               <CircleRing value={memPercent} label="RAM" color="#06b6d4"
                 sub={`${stats.memory.used}/${stats.memory.total}MB`} />
             </div>
+
+            {/* Per-core bars */}
+            {stats.cores.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {stats.cores.map((pct, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-muted-foreground w-7 shrink-0">C{i}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${pct}%`,
+                          background: pct > 80 ? '#ef4444' : pct > 50 ? '#f59e0b' : '#7c6af7',
+                        }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-muted-foreground w-6 text-right shrink-0">{pct}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {stats.disks.slice(0, 1).map(d => (
               <div key={d.mount} className="space-y-1">
                 <div className="flex justify-between text-[10px] text-muted-foreground">

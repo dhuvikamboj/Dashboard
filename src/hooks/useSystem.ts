@@ -18,6 +18,7 @@ export interface ProcessEntry {
 
 export interface SystemStats {
   cpu: number
+  cores: number[]
   memory: { used: number; total: number }
   disks: DiskEntry[]
   processes: ProcessEntry[]
