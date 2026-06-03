@@ -62,7 +62,7 @@ export function ClipboardBucket({ config }: Props) {
   const load = useCallback(async () => {
     try {
       const res = await getPb().collection(COLLECTION).getList<ClipItem>(1, config.maxItems ?? 20, {
-        sort: '-created',
+        sort: '-@created',
       })
       setItems(res.items)
       setLoading(false)
