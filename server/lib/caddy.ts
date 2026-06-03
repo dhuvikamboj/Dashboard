@@ -1,7 +1,7 @@
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-const CADDY_FILE = process.env['CADDY_CONFIG'] ?? `${process.env['HOME']}/.config/caddy/Caddyfile`
+const CADDY_FILE = process.env['CADDY_CONFIG'] ?? `${process.env['HOME']}/caddy/Caddyfile`
 
 export async function readCaddy(): Promise<string> {
   try {
