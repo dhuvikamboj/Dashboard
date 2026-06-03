@@ -123,12 +123,12 @@ async function getMemory(): Promise<{ used: number; total: number }> {
       }
     }
     // Fallback: parse `free -m` — columns: total used free shared buff/cache available
-    const out = await run("free -m 2>/dev/null | grep Mem")
-    const p = out.trim().split(/\s+/)
-    // p[0]=Mem: p[1]=total p[2]=used p[3]=free p[4]=shared p[5]=buff/cache p[6]=available
-    const total = parseInt(p[1] ?? '0')
-    const available = parseInt(p[6] ?? p[3] ?? '0')
-    return { total, used: Math.max(0, total - available) }
+    const freeOut = await run("free -m 2>/dev/null | grep Mem")
+    const fp = freeOut.trim().split(/\s+/)
+    // fp[0]=Mem: fp[1]=total fp[2]=used fp[3]=free fp[4]=shared fp[5]=buff/cache fp[6]=available
+    const freeTotal = parseInt(fp[1] ?? '0')
+    const freeAvail = parseInt(fp[6] ?? fp[3] ?? '0')
+    return { total: freeTotal, used: Math.max(0, freeTotal - freeAvail) }
   } catch {
     return { used: 0, total: 0 }
   }
