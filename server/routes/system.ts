@@ -28,9 +28,12 @@ function calcPercent(v1: number[], v2: number[]): number {
   return Math.max(0, Math.min(100, Math.round(((diff - (idle2 - idle1)) / diff) * 100)))
 }
 
-async function getCPU(): Promise<{ total: number; cores: number[] }> {
+async function getCpuFromProcStat(): Promise<{ total: number; cores: number[] } | null> {
   try {
     const s1 = await Bun.file('/proc/stat').text()
+    // Check if values are non-zero (Android sometimes returns all zeros)
+    const firstLine = parseCpuLines(s1)['cpu'] ?? []
+    if (firstLine.every(v => v === 0)) return null
     await new Promise(r => setTimeout(r, 500))
     const s2 = await Bun.file('/proc/stat').text()
     const m1 = parseCpuLines(s1)
@@ -42,8 +45,66 @@ async function getCPU(): Promise<{ total: number; cores: number[] }> {
       .map(k => calcPercent(m1[k] ?? [], m2[k] ?? []))
     return { total, cores }
   } catch {
+    return null
+  }
+}
+
+async function getCpuFromTop(): Promise<{ total: number; cores: number[] }> {
+  try {
+    // Android top format: "800%cpu  12%user  0%nice  8%sys 780%idle 0%iow ..."
+    const out = await run("top -bn1 2>/dev/null | head -5")
+    const line = out.split('\n').find(l => l.includes('%cpu') || l.includes('%idle'))
+    if (line) {
+      const totalMatch = line.match(/(\d+)%cpu/)
+      const idleMatch = line.match(/(\d+)%idle/)
+      if (totalMatch && idleMatch) {
+        const total = parseInt(totalMatch[1] ?? '100')
+        const idle = parseInt(idleMatch[1] ?? '100')
+        const used = Math.max(0, total - idle)
+        // Normalize to 0-100% (divide by core count)
+        return { total: Math.min(100, Math.round((used / total) * 100)), cores: [] }
+      }
+      // Linux top format: "%Cpu(s): 5.0 us, 2.0 sy, ..., 92.0 id"
+      const idleLinux = line.match(/(\d+\.?\d*)\s*id/)
+      if (idleLinux) {
+        return { total: Math.max(0, Math.round(100 - parseFloat(idleLinux[1] ?? '100'))), cores: [] }
+      }
+    }
+    return { total: 0, cores: [] }
+  } catch {
     return { total: 0, cores: [] }
   }
+}
+
+async function getCoreFreqs(): Promise<number[]> {
+  try {
+    const out = await run(
+      "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq; do cat $f 2>/dev/null; done"
+    )
+    const maxOut = await run(
+      "for f in /sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_max_freq; do cat $f 2>/dev/null; done"
+    )
+    const cur = out.split('\n').filter(Boolean).map(Number)
+    const max = maxOut.split('\n').filter(Boolean).map(Number)
+    if (cur.length === 0) return []
+    return cur.map((c, i) => {
+      const m = max[i] ?? max[max.length - 1] ?? c
+      return m > 0 ? Math.round((c / m) * 100) : 0
+    })
+  } catch {
+    return []
+  }
+}
+
+async function getCPU(): Promise<{ total: number; cores: number[] }> {
+  const [fromProc, coreFreqs] = await Promise.all([
+    getCpuFromProcStat(),
+    getCoreFreqs(),
+  ])
+  if (fromProc !== null) return fromProc
+  const fromTop = await getCpuFromTop()
+  // Use freq-based core utilization as proxy when /proc/stat denied
+  return { total: fromTop.total, cores: coreFreqs }
 }
 
 async function getMemory(): Promise<{ used: number; total: number }> {
@@ -55,10 +116,19 @@ async function getMemory(): Promise<{ used: number; total: number }> {
     }
     const total = get('MemTotal')
     const available = get('MemAvailable')
-    return {
-      used: Math.round((total - available) / 1024 / 1024),
-      total: Math.round(total / 1024 / 1024),
+    if (total > 0) {
+      return {
+        used: Math.round((total - available) / 1024 / 1024),
+        total: Math.round(total / 1024 / 1024),
+      }
     }
+    // Fallback: parse `free -m` — columns: total used free shared buff/cache available
+    const out = await run("free -m 2>/dev/null | grep Mem")
+    const p = out.trim().split(/\s+/)
+    // p[0]=Mem: p[1]=total p[2]=used p[3]=free p[4]=shared p[5]=buff/cache p[6]=available
+    const total = parseInt(p[1] ?? '0')
+    const available = parseInt(p[6] ?? p[3] ?? '0')
+    return { total, used: Math.max(0, total - available) }
   } catch {
     return { used: 0, total: 0 }
   }
