@@ -51,25 +51,33 @@ async function getCpuFromProcStat(): Promise<{ total: number; cores: number[] } 
 
 async function getCpuFromTop(): Promise<{ total: number; cores: number[] }> {
   try {
-    // Android top format: "800%cpu  12%user  0%nice  8%sys 780%idle 0%iow ..."
-    const out = await run("top -bn1 2>/dev/null | head -5")
-    const line = out.split('\n').find(l => l.includes('%cpu') || l.includes('%idle'))
-    if (line) {
-      const totalMatch = line.match(/(\d+)%cpu/)
-      const idleMatch = line.match(/(\d+)%idle/)
-      if (totalMatch && idleMatch) {
-        const total = parseInt(totalMatch[1] ?? '100')
-        const idle = parseInt(idleMatch[1] ?? '100')
+    // Two samples needed; filter lines with NUMBERs before %cpu (Android summary)
+    const out = await run("top -bn2 -d0.3 2>/dev/null | grep -E '[0-9]%cpu'")
+    const lines = out.split('\n')
+
+    // Android format: "800%cpu  12%user  8%sys 780%idle ..."
+    // Take the LAST occurrence (second sample = accurate)
+    const androidLine = [...lines].reverse().find(l => /\d+%cpu/.test(l))
+    if (androidLine) {
+      const totalM = androidLine.match(/(\d+)%cpu/)
+      const idleM = androidLine.match(/(\d+)%idle/)
+      if (totalM && idleM) {
+        const total = parseInt(totalM[1]!)
+        const idle = parseInt(idleM[1]!)
         const used = Math.max(0, total - idle)
-        // Normalize to 0-100% (divide by core count)
-        return { total: Math.min(100, Math.round((used / total) * 100)), cores: [] }
-      }
-      // Linux top format: "%Cpu(s): 5.0 us, 2.0 sy, ..., 92.0 id"
-      const idleLinux = line.match(/(\d+\.?\d*)\s*id/)
-      if (idleLinux) {
-        return { total: Math.max(0, Math.round(100 - parseFloat(idleLinux[1] ?? '100'))), cores: [] }
+        return { total: total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0, cores: [] }
       }
     }
+
+    // Linux top format: "%Cpu(s): 5.0 us, 2.0 sy, ..., 92.0 id"
+    const linuxLine = [...lines].reverse().find(l => l.includes('%Cpu') || l.includes('Cpu(s)'))
+    if (linuxLine) {
+      const idleM = linuxLine.match(/(\d+\.?\d*)\s*id/)
+      if (idleM) {
+        return { total: Math.max(0, Math.round(100 - parseFloat(idleM[1]!))), cores: [] }
+      }
+    }
+
     return { total: 0, cores: [] }
   } catch {
     return { total: 0, cores: [] }
